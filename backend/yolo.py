@@ -1,12 +1,12 @@
-
-
-import os
-import cv2 as cv
-import gc
 import time
-import numpy as np
 import math
+import functools
 
+import numpy as np
+import cv2 as cv
+
+WEIGHTSPATH = "yolo/yolov4-tiny-obj_best.weights"
+CFGPATH = "yolo/yolov4-tiny-obj.cfg"
 CONFIDENCE = 0.5
 THRESHOLD = 0.4
 
@@ -19,7 +19,7 @@ def getYOLOOutput(img, net):
     start = time.time()
     layerOutputs = net.forward(outInfo)
     end = time.time()
-    print("[INFO] YOLO took {:.6f} seconds".format(end - start))
+    # print("[INFO] YOLO took {:.6f} seconds".format(end - start))
 
     (H, W) = img.shape[:2]
     boxes = []
@@ -54,59 +54,6 @@ def getYOLOOutput(img, net):
             else:
                 pc.append([x+w/2, y+h/2, confidences[i]])
     return dfg, pc
-
-
-yolo_dir = 'yolo'
-weightsPath = os.path.join(
-    yolo_dir, 'yolov4-tiny-obj_best.weights')  # YOLO weights
-configPath = os.path.join(yolo_dir, 'yolov4-tiny-obj.cfg')  # YOLO config
-imgPath1 = 'data/1.jpg'  # Input images
-imgPath2 = 'data/3.jpg'
-
-
-net = cv.dnn.readNetFromDarknet(configPath, weightsPath)
-print("[INFO] loading YOLO from disk...")
-
-img1 = cv.imread(imgPath1)
-img2 = cv.imread(imgPath2)
-
-dfg1, pc1 = getYOLOOutput(img1, net)
-dfg2, pc2 = getYOLOOutput(img2, net)
-print(len(dfg1), len(dfg2))
-gc.collect()
-
-if len(dfg1) > 2:
-    tmpdfg = []
-    maxD = 0
-    for i in range(len(dfg1)-1):
-        for j in range(i+1, len(dfg1)):
-            d = math.sqrt(pow(dfg1[i][0]-dfg1[j][0], 2) +
-                          pow(dfg1[i][1]-dfg1[j][1], 2))
-            if d > maxD:
-                tmpdfg = [dfg1[i], dfg1[j]]
-                maxD = d
-    dfg1 = tmpdfg
-
-if len(dfg2) > 2:
-    tmpdfg = []
-    maxD = 0
-    for i in range(len(dfg2)-1):
-        for j in range(i+1, len(dfg2)):
-            d = math.sqrt(pow(dfg2[i][0]-dfg2[j][0], 2) +
-                          pow(dfg2[i][1]-dfg2[j][1], 2))
-            if d > maxD:
-                tmpdfg = [dfg2[i], dfg2[j]]
-                maxD = d
-    dfg2 = tmpdfg
-
-pc1 = sorted(pc1, key=lambda x: x[-1], reverse=True)
-pc2 = sorted(pc2, key=lambda x: x[-1], reverse=True)
-
-
-def show(img):
-    cv.imshow("", img)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
 
 
 def extractROI(img, dfg, pc):
@@ -179,52 +126,6 @@ def onePoint(x, y, angle):
     return [int(X), int(Y)]
 
 
-ROI1 = extractROI(img1, dfg1, pc1)
-ROI2 = extractROI(img2, dfg2, pc2)
-
-
-""""""""""""""""""""""""""""""""""""""
-
-# Open a connection to the camera (0 by default represents the default camera)
-cap = cv.VideoCapture(0)
-
-# Check if the camera is opened successfully
-if not cap.isOpened():
-    print("Error: Could not open camera.")
-    exit()
-
-while True:
-    # Capture frame-by-frame
-    ret, frame = cap.read()
-
-    # If the frame is read correctly, ret will be True
-    if ret:
-        # Display the frame
-        dfg, pc = getYOLOOutput(frame, net)
-        gc.collect()
-        try:
-            assert len(dfg) >= 2
-            if len(dfg) > 2:
-                tmpdfg = []
-                maxD = 0
-                for i in range(len(dfg)-1):
-                    for j in range(i+1, len(dfg)):
-                        d = math.sqrt(pow(dfg[i][0]-dfg[j][0], 2) +
-                                      pow(dfg[i][1]-dfg[j][1], 2))
-                        if d > maxD:
-                            tmpdfg = [dfg[i], dfg[j]]
-                            maxD = d
-                dfg = tmpdfg
-            pc = sorted(pc, key=lambda x: x[-1], reverse=True)
-            roi = extractROI(frame, dfg, pc)
-            cv.imshow('Camera Feed', roi)
-        except:
-            cv.imshow('Camera Feed', frame)
-
-    # Break the loop if 'q' key is pressed
-    if cv.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release the camera and close the window
-cap.release()
-cv.destroyAllWindows()
+@functools.lru_cache(maxsize=1)
+def getYoloNet():
+    return cv.dnn.readNetFromDarknet(CFGPATH, WEIGHTSPATH)
