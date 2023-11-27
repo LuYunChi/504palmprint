@@ -51,10 +51,14 @@ class Service:
         while True:
             ret, frame = cap.read()
             if ret:
-                user = self._pp_in_db(frame)
+                display = frame
+                roi = try_get_roi(frame)
+                if roi is not None:
+                    display = roi
+                    user = self._pp_in_db(roi)
                 if user is not None:
                     break
-                cv.imshow('Camera Feed', frame)
+                cv.imshow('Camera Feed', display)
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
         cap.release()
@@ -62,12 +66,8 @@ class Service:
         cv.waitKey(1)
         return user
 
-    def _pp_in_db(self, frame) -> Optional[str]:
+    def _pp_in_db(self, roi) -> Optional[str]:
         if len(self.embs) == 0:
-            return None
-
-        roi = try_get_roi(frame)
-        if roi is None:
             return None
 
         emb = roi_to_embeddings(roi)
@@ -89,12 +89,14 @@ class Service:
         while True and len(embs) < self.redundancy:
             ret, frame = cap.read()
             if ret:
+                display = frame
                 roi = try_get_roi(frame)
                 if roi is not None:
+                    display = roi
                     e = roi_to_embeddings(roi)
                     if len(e):
                         embs.append(e)
-                cv.imshow('Camera Feed', frame)
+                cv.imshow('Camera Feed', display)
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
         cap.release()
