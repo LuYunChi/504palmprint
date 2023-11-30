@@ -1,4 +1,3 @@
-import time
 from auth_service import Service
 
 service = Service()
@@ -12,7 +11,7 @@ while True:
         if verify_id is None:
             print("Palmprint not recognized.")
         else:
-            print("Palmprint not recognized, user: ", verify_id)
+            print("Palmprint recognized, user: ", verify_id)
     elif cmd == "add":
         name = input("Input user name: ")
         if service.user_exists(name):
@@ -20,9 +19,9 @@ while True:
             continue
         else:
             service.add_user(name)
-    elif cmd == "save":
-        fname = input("Input filename: ")
-        service.save_db(fname)
+    # elif cmd == "save":
+    #     fname = input("Input filename: ")
+    #     service.save_db(fname)
     elif cmd == "lsusers":
         for u in service.users:
             print(f"    {u}")

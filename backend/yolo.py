@@ -5,8 +5,8 @@ import functools
 import numpy as np
 import cv2 as cv
 
-WEIGHTSPATH = "yolo/yolov4-tiny-obj_best.weights"
-CFGPATH = "yolo/yolov4-tiny-obj.cfg"
+WEIGHTSPATH = "models/yolov4-tiny-obj_best.weights"
+CFGPATH = "models/yolov4-tiny-obj.cfg"
 CONFIDENCE = 0.5
 THRESHOLD = 0.4
 

@@ -1,5 +1,9 @@
 
 
+from PIL import Image
+from torchvision import transforms
+from mobilevit import MobileViT
+import torch
 import os
 import cv2 as cv
 import gc
@@ -56,7 +60,7 @@ def getYOLOOutput(img, net):
     return dfg, pc
 
 
-yolo_dir = 'yolo'
+yolo_dir = 'models'
 weightsPath = os.path.join(
     yolo_dir, 'yolov4-tiny-obj_best.weights')  # YOLO weights
 configPath = os.path.join(yolo_dir, 'yolov4-tiny-obj.cfg')  # YOLO config
@@ -183,48 +187,67 @@ ROI1 = extractROI(img1, dfg1, pc1)
 ROI2 = extractROI(img2, dfg2, pc2)
 
 
-""""""""""""""""""""""""""""""""""""""
+# """"""""""""""""""""""""""""""""""""""
 
-# Open a connection to the camera (0 by default represents the default camera)
-cap = cv.VideoCapture(0)
+# # Open a connection to the camera (0 by default represents the default camera)
+# cap = cv.VideoCapture(0)
 
-# Check if the camera is opened successfully
-if not cap.isOpened():
-    print("Error: Could not open camera.")
-    exit()
+# # Check if the camera is opened successfully
+# if not cap.isOpened():
+#     print("Error: Could not open camera.")
+#     exit()
 
-while True:
-    # Capture frame-by-frame
-    ret, frame = cap.read()
+# while True:
+#     # Capture frame-by-frame
+#     ret, frame = cap.read()
 
-    # If the frame is read correctly, ret will be True
-    if ret:
-        # Display the frame
-        dfg, pc = getYOLOOutput(frame, net)
-        gc.collect()
-        try:
-            assert len(dfg) >= 2
-            if len(dfg) > 2:
-                tmpdfg = []
-                maxD = 0
-                for i in range(len(dfg)-1):
-                    for j in range(i+1, len(dfg)):
-                        d = math.sqrt(pow(dfg[i][0]-dfg[j][0], 2) +
-                                      pow(dfg[i][1]-dfg[j][1], 2))
-                        if d > maxD:
-                            tmpdfg = [dfg[i], dfg[j]]
-                            maxD = d
-                dfg = tmpdfg
-            pc = sorted(pc, key=lambda x: x[-1], reverse=True)
-            roi = extractROI(frame, dfg, pc)
-            cv.imshow('Camera Feed', roi)
-        except:
-            cv.imshow('Camera Feed', frame)
+#     # If the frame is read correctly, ret will be True
+#     if ret:
+#         # Display the frame
+#         dfg, pc = getYOLOOutput(frame, net)
+#         gc.collect()
+#         try:
+#             assert len(dfg) >= 2
+#             if len(dfg) > 2:
+#                 tmpdfg = []
+#                 maxD = 0
+#                 for i in range(len(dfg)-1):
+#                     for j in range(i+1, len(dfg)):
+#                         d = math.sqrt(pow(dfg[i][0]-dfg[j][0], 2) +
+#                                       pow(dfg[i][1]-dfg[j][1], 2))
+#                         if d > maxD:
+#                             tmpdfg = [dfg[i], dfg[j]]
+#                             maxD = d
+#                 dfg = tmpdfg
+#             pc = sorted(pc, key=lambda x: x[-1], reverse=True)
+#             roi = extractROI(frame, dfg, pc)
+#             cv.imshow('Camera Feed', roi)
+#         except:
+#             cv.imshow('Camera Feed', frame)
 
-    # Break the loop if 'q' key is pressed
-    if cv.waitKey(1) & 0xFF == ord('q'):
-        break
+#     # Break the loop if 'q' key is pressed
+#     if cv.waitKey(1) & 0xFF == ord('q'):
+#         break
 
-# Release the camera and close the window
-cap.release()
-cv.destroyAllWindows()
+# # Release the camera and close the window
+# cap.release()
+# cv.destroyAllWindows()
+""""""""""""""""""
+transform = transforms.Compose([
+    transforms.Resize((256, 256)),
+    transforms.ToTensor(),
+])
+ROI1 = transform(Image.fromarray(ROI1)).unsqueeze(0)
+
+
+model = MobileViT(arch='x_small', last_channels=1024, gd_conv=True)
+state_dict = torch.load(
+    'models/x_small_model_weights_best.pth', map_location=torch.device('cpu'))
+model.load_state_dict(state_dict)
+with torch.no_grad():
+    features = model(ROI1)
+    norm_feat = (features**2).sum(axis=1, keepdim=True).sqrt()
+    features = features / norm_feat
+    print(list(features.numpy()[0]))
+    # calculate similarities
+    # make sure your features stored in database are normalized

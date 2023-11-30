@@ -1,8 +1,13 @@
+import functools
 import gc
 import math
 from typing import Optional, List
 
+import torch
+from PIL import Image
+from torchvision import transforms
 
+from backend.mobilevit import MobileViT
 from .yolo import getYOLOOutput, extractROI, getYoloNet
 
 
@@ -31,5 +36,25 @@ def try_get_roi(frame) -> Optional[List]:
 
 
 def roi_to_embeddings(roi) -> List:
-    # TODO
-    return []
+    transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+    ])
+
+    roi = transform(Image.fromarray(roi)).unsqueeze(0)
+    model = _get_model()
+
+    with torch.no_grad():
+        features = model(roi)
+        norm_feat = (features**2).sum(axis=1, keepdim=True).sqrt()
+        features = features / norm_feat
+        return list(features.numpy()[0])
+
+
+@functools.lru_cache()
+def _get_model():
+    model = MobileViT(arch='x_small', last_channels=1024, gd_conv=True)
+    state_dict = torch.load(
+        'models/x_small_model_weights_best.pth', map_location=torch.device('cpu'))
+    model.load_state_dict(state_dict)
+    return model

@@ -1,6 +1,5 @@
 import json
 import os
-import time
 from typing import Optional, Tuple, List
 import cv2 as cv
 import numpy as np
@@ -8,20 +7,21 @@ import numpy as np
 from backend.api import try_get_roi, roi_to_embeddings
 
 
-T = 0.5014
+T = 0.5
 
 
 class Service:
     def __init__(self, db_path=None) -> None:
         self.db_path = db_path
-        self.redundancy = 3
-        self.embs = self._load_db(db_path)
+        self.redundancy = 10
+        # self.embs = self._load_db(db_path)
+        self.embs = []
 
-    def _load_db(self, db_path) -> List[Tuple[List, str]]:
-        if db_path is None:
-            return []
-        with open(db_path, "r") as fp:
-            return json.load(fp)
+    # def _load_db(self, db_path) -> List[Tuple[List, str]]:
+    #     if db_path is None:
+    #         return []
+    #     with open(db_path, "r") as fp:
+    #         return json.load(fp)
 
     def demo_roi_camera(self) -> None:
         cap = cv.VideoCapture(0)
@@ -72,7 +72,7 @@ class Service:
 
         emb = roi_to_embeddings(roi)
         sims = [(np.dot(emb, e), u) for e, u in self.embs]
-        s, u = sims.sort(reverse=True)[0]
+        s, u = sorted(sims, reverse=True)[0]
         if s < T:
             return None
         return u
@@ -97,7 +97,7 @@ class Service:
                     if len(e):
                         embs.append(e)
                 cv.imshow('Camera Feed', display)
-            if cv.waitKey(1) & 0xFF == ord('q'):
+            if cv.waitKey(10) & 0xFF == ord('q'):
                 break
         cap.release()
         cv.destroyAllWindows()
@@ -112,10 +112,10 @@ class Service:
         else:
             raise
 
-    def save_db(self, fname) -> None:
-        path = os.path.join("store", f"{fname}.json")
-        with open(path, "w") as fp:
-            json.dump(self.embs, fp)
+    # def save_db(self, fname) -> None:
+    #     path = os.path.join("store", f"{fname}.json")
+    #     with open(path, "w") as fp:
+    #         json.dump(self.embs, fp)
 
     @property
     def users(self):
