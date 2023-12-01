@@ -3,6 +3,7 @@ import os
 from typing import Optional, Tuple, List
 import cv2 as cv
 import numpy as np
+import pickle
 
 from backend.api import try_get_roi, roi_to_embeddings
 
@@ -14,14 +15,16 @@ class Service:
     def __init__(self, db_path=None) -> None:
         self.db_path = db_path
         self.redundancy = 10
-        # self.embs = self._load_db(db_path)
-        self.embs = []
+        self.embs = self._load_db(db_path)
+        # self.embs = []
 
-    # def _load_db(self, db_path) -> List[Tuple[List, str]]:
-    #     if db_path is None:
-    #         return []
-    #     with open(db_path, "r") as fp:
-    #         return json.load(fp)
+    def _load_db(self, db_path) -> List[Tuple[List, str]]:
+        if db_path is None:
+            return []
+        # with open(db_path, "r") as fp:
+        #     return json.load(fp)
+        with open(db_path, 'rb') as fp:
+            return pickle.load(fp)
 
     def demo_roi_camera(self) -> None:
         cap = cv.VideoCapture(0)
@@ -112,10 +115,13 @@ class Service:
         else:
             raise
 
-    # def save_db(self, fname) -> None:
-    #     path = os.path.join("store", f"{fname}.json")
-    #     with open(path, "w") as fp:
-    #         json.dump(self.embs, fp)
+    def save_db(self, fname) -> None:
+        # path = os.path.join("store", f"{fname}.json")
+        # with open(path, "w") as fp:
+        #     json.dump(self.embs, fp)
+        path = os.path.join("store", f"{fname}.pkl")
+        with open(path, 'wb') as file:
+            pickle.dump(self.embs, file)
 
     @property
     def users(self):

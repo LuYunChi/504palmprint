@@ -1,6 +1,7 @@
 from auth_service import Service
 
 service = Service()
+# service = Service("store/yc.pkl")
 
 while True:
     cmd = input("cmd: ").strip()
@@ -19,9 +20,9 @@ while True:
             continue
         else:
             service.add_user(name)
-    # elif cmd == "save":
-    #     fname = input("Input filename: ")
-    #     service.save_db(fname)
+    elif cmd == "save":
+        fname = input("Input filename: ")
+        service.save_db(fname)
     elif cmd == "lsusers":
         for u in service.users:
             print(f"    {u}")
